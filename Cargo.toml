@@ -1,0 +1,12 @@
+[package]
+name = "rust-plantronics"
+version = "0.1.0"
+authors = ["Derek Anderson <Derek.Anderson@virtustream.com>"]
+edition = "2018"
+
+[dependencies]
+reqwest = "0.9.5"
+serde = ">=1.0"
+serde_json = ">=1.0"
+serde_derive = ">=1.0"
+serde_urlencoded = ">=0.5"
