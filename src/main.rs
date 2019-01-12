@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate serde_json;
 extern crate reqwest;
+use serde_json::{Error, Value};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -19,19 +22,6 @@ struct AppRegistration {
     Description: String,
     #[serde(default)]
     Result: bool,
-    #[serde(default)]
-    error: PlantronicsError,
-    Type: u32,
-    #[serde(rename = "Type_Name")]
-    typeName: String,
-    isError: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SessionResponse {
-    Description: String,
-    #[serde(default)]
-    Result: String,
     #[serde(default)]
     error: PlantronicsError,
     Type: u32,
@@ -60,10 +50,10 @@ struct DataServiceEvent {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct DataServiceResponse {
+struct PlantronicsResponse {
     Description: String,
     #[serde(default)]
-    Result: Vec<DataServiceEvent>,
+    Result: serde_json::Value,
     #[serde(default)]
     error: PlantronicsError,
     Type: u32,
@@ -83,10 +73,13 @@ fn get_session_id(name: &String) -> Result<String> {
     println!("{:?}", out);
     let request_url = format!("http://localhost:32017/Spokes/DeviceServices/Attach?uid=0123456789");
     let mut response = reqwest::get(&request_url)?;
-    let out: SessionResponse = response.json()?;
+    let out: PlantronicsResponse = response.json()?;
     println!("{:?}", out);
     if !out.isError && out.typeName == "SessionHash" {
-        let session_id = out.Result;
+        let session_id = match out.Result {
+            Value::String(outstr) => outstr,
+            _ => "".to_string(),
+        };
         if session_id == "" {
             return Err("No session ID in the result.".into());
         } else {
@@ -97,71 +90,33 @@ fn get_session_id(name: &String) -> Result<String> {
     }
 }
 
+fn get_dse_from_json(item: &Value) -> Result<DataServiceEvent> {
+    let json_str = serde_json::to_string(item)?;
+    println!("{:?}", &json_str);
+    let ev: DataServiceEvent = serde_json::from_str(&json_str)?;
+    return Ok(ev);
+}
+
 fn get_events(session_id: &String) -> Result<Vec<DataServiceEvent>> {
-    // Wherein we http://localhost:32017/Spokes/DeviceServices/Events\?sess\=6ba5b8b0bb6d45bd574cd1fc4f1bb024
-    // This will return:
-    /*
-        {
-        "Description": "Device Events",
-        "Result": [
-        {
-        "Age": 1643,
-        "Event_Id": 6,
-        "Event_Log_Type_Id": 2,
-        "Event_Log_Type_Name": "HeadsetStateChange",
-        "Event_Name": "MuteOff",
-        "Order": 6
-        },
-        {
-        "Age": 1647,
-        "Event_Id": 5,
-        "Event_Log_Type_Id": 4,
-        "Event_Log_Type_Name": "HeadsetButtonPressed",
-        "Event_Name": "Mute",
-        "Order": 5
-        }
-    ],
-        "Type": 6,
-        "Type_Name": "DeviceEventArray",
-        "isError": false
-    }
-
-        // OR
-
-        {
-        "Description": "Device Events",
-        "Result": [
-        {
-        "Age": 1199,
-        "Event_Id": 5,
-        "Event_Log_Type_Id": 2,
-        "Event_Log_Type_Name": "HeadsetStateChange",
-        "Event_Name": "MuteOn",
-        "Order": 4
-    },
-        {
-        "Age": 1202,
-        "Event_Id": 5,
-        "Event_Log_Type_Id": 4,
-        "Event_Log_Type_Name": "HeadsetButtonPressed",
-        "Event_Name": "Mute",
-        "Order": 3
-    }
-    ],
-        "Type": 6,
-        "Type_Name": "DeviceEventArray",
-        "isError": false
-    }
-         */
+    // Wherein we http://localhost:32017/Spokes/DeviceServices/Events?sess=$sess
     let request_url = format!(
         "http://localhost:32017/Spokes/DeviceServices/Events?sess={sess}",
         sess = session_id
     );
     let mut response = reqwest::get(&request_url)?;
-    let out: DataServiceResponse = response.json()?;
+    let out: PlantronicsResponse = response.json()?;
     println!("{:?}", out);
     if !out.isError && out.typeName == "DeviceEventArray" {
-        let eventresult = out.Result;
+        let mut eventresult: Vec<DataServiceEvent> = Vec::new();
+        match out.Result {
+            Value::Array(outvec) => {
+                for item_result in outvec.into_iter() {
+                    println!("item_result is {:?}", item_result);
+                    eventresult.push(get_dse_from_json(&item_result).unwrap());
+                }
+            }
+            _ => return Err("Unexpected Result type from DeviceEventArray.".into()),
+        };
         return Ok(eventresult);
     } else {
         return Err("Undefined error from session endpoint.".into());
@@ -184,7 +139,7 @@ fn main() {
         //println!("{}", );
 
         for event in events.into_iter() {
-            println!("{:?}", event);
+            println!("ev: {:?}", event);
         }
         sleep(delay_time);
     }
