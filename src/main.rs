@@ -7,60 +7,8 @@ use serde_json::{Error, Value};
 use std::thread::sleep;
 use std::time::Duration;
 
+mod encoding;
 type Result<T> = std::result::Result<T, Box<std::error::Error>>;
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct PlantronicsError {
-    Description: String,
-    #[serde(rename = "Error_Code")]
-    ErrorCode: u32,
-    Type: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct AppRegistration {
-    Description: String,
-    #[serde(default)]
-    Result: bool,
-    #[serde(default)]
-    error: PlantronicsError,
-    Type: u32,
-    #[serde(rename = "Type_Name")]
-    typeName: String,
-    isError: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct DataServiceEvent {
-    /*
-        {
-            "Age": 1643,
-            "Event_Id": 6,
-            "Event_Log_Type_Id": 2,
-            "Event_Log_Type_Name": "HeadsetStateChange",
-            "Event_Name": "MuteOff",
-            "Order": 6
-    },*/
-    Age: i32,
-    Event_Id: i32,
-    Event_Log_Type_Id: i32,
-    Event_Log_Type_Name: String,
-    Event_Name: String,
-    Order: i32,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct PlantronicsResponse {
-    Description: String,
-    #[serde(default)]
-    Result: serde_json::Value,
-    #[serde(default)]
-    error: PlantronicsError,
-    Type: u32,
-    #[serde(rename = "Type_Name")]
-    typeName: String,
-    isError: bool,
-}
 
 fn get_session_id(name: &String) -> Result<String> {
     let request_url = format!(
@@ -69,11 +17,11 @@ fn get_session_id(name: &String) -> Result<String> {
     );
     println!("{}", request_url);
     let mut response = reqwest::get(&request_url)?;
-    let out: AppRegistration = response.json()?;
+    let out: encoding::AppRegistration = response.json()?;
     println!("{:?}", out);
     let request_url = format!("http://localhost:32017/Spokes/DeviceServices/Attach?uid=0123456789");
     let mut response = reqwest::get(&request_url)?;
-    let out: PlantronicsResponse = response.json()?;
+    let out: encoding::PlantronicsResponse = response.json()?;
     println!("{:?}", out);
     if !out.isError && out.typeName == "SessionHash" {
         let session_id = match out.Result {
@@ -90,24 +38,24 @@ fn get_session_id(name: &String) -> Result<String> {
     }
 }
 
-fn get_dse_from_json(item: &Value) -> Result<DataServiceEvent> {
+fn get_dse_from_json(item: &Value) -> Result<encoding::DataServiceEvent> {
     let json_str = serde_json::to_string(item)?;
     println!("{:?}", &json_str);
-    let ev: DataServiceEvent = serde_json::from_str(&json_str)?;
+    let ev: encoding::DataServiceEvent = serde_json::from_str(&json_str)?;
     return Ok(ev);
 }
 
-fn get_events(session_id: &String) -> Result<Vec<DataServiceEvent>> {
+fn get_events(session_id: &String) -> Result<Vec<encoding::DataServiceEvent>> {
     // Wherein we http://localhost:32017/Spokes/DeviceServices/Events?sess=$sess
     let request_url = format!(
         "http://localhost:32017/Spokes/DeviceServices/Events?sess={sess}",
         sess = session_id
     );
     let mut response = reqwest::get(&request_url)?;
-    let out: PlantronicsResponse = response.json()?;
+    let out: encoding::PlantronicsResponse = response.json()?;
     println!("{:?}", out);
     if !out.isError && out.typeName == "DeviceEventArray" {
-        let mut eventresult: Vec<DataServiceEvent> = Vec::new();
+        let mut eventresult: Vec<encoding::DataServiceEvent> = Vec::new();
         match out.Result {
             Value::Array(outvec) => {
                 for item_result in outvec.into_iter() {
