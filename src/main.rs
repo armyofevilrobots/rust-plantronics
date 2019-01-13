@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
-extern crate serde_json;
+extern crate clap;
 extern crate reqwest;
-use serde_json::{Error, Value};
+use clap::{App, Arg};
+use serde_json::Value;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -23,8 +23,8 @@ fn get_session_id(name: &String) -> Result<String> {
     let mut response = reqwest::get(&request_url)?;
     let out: encoding::PlantronicsResponse = response.json()?;
     println!("{:?}", out);
-    if !out.isError && out.typeName == "SessionHash" {
-        let session_id = match out.Result {
+    if !out.is_error && out.type_name == "SessionHash" {
+        let session_id = match out.result {
             Value::String(outstr) => outstr,
             _ => "".to_string(),
         };
@@ -54,9 +54,9 @@ fn get_events(session_id: &String) -> Result<Vec<encoding::DataServiceEvent>> {
     let mut response = reqwest::get(&request_url)?;
     let out: encoding::PlantronicsResponse = response.json()?;
     println!("{:?}", out);
-    if !out.isError && out.typeName == "DeviceEventArray" {
+    if !out.is_error && out.type_name == "DeviceEventArray" {
         let mut eventresult: Vec<encoding::DataServiceEvent> = Vec::new();
-        match out.Result {
+        match out.result {
             Value::Array(outvec) => {
                 for item_result in outvec.into_iter() {
                     println!("item_result is {:?}", item_result);
@@ -72,6 +72,27 @@ fn get_events(session_id: &String) -> Result<Vec<encoding::DataServiceEvent>> {
 }
 
 fn main() {
+    let _matches = App::new("rust-plantronics")
+        .version("0.0.1")
+        .author("Derek Anderson <derek@armyofevilrobots.com>")
+        .about("Monitors state of a plantronics headset and sends events to various endpoints.")
+        .arg(
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .value_name("FILE")
+                .help("Sets a custom config file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("url")
+                .short("u")
+                .long("url")
+                .takes_value(true)
+                .help("The BaseURL of the plantronics API (http://localhost:32017/)"),
+        )
+        .get_matches();
+
     let token = match get_session_id(&"rust-plantronics".to_string()) {
         Ok(token) => token,
         Err(e) => {
