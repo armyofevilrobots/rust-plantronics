@@ -67,3 +67,6 @@ pub struct PlantronicsResponse {
     #[serde(rename = "isError")]
     pub is_error: bool,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PlantronicsState {}
