@@ -7,9 +7,14 @@ on an [Sonoff S26 IoT plug](https://www.itead.cc/sonoff-s26-wifi-smart-plug.html
 to mute or unmute an "on the air" sign like this one: 
 [On Air Sign: Aliexpress](https://www.aliexpress.com/item/LB480-On-Air-Recording-Studio-NEW-NR-LED-Neon-Light-Sign-home-decor-crafts/1000006552370.html).
 
+The end result is...
+
+![Animated](https://i.imgur.com/msRk3HK.gif)
+
 Note; plantronics hub REST api is kinda crusty. Structures are not
 easily coerced into static types (ie: isError adds a field, but the 
 result is either empty or missing, but not consistently).
+
 
 ```
 rust-plantronics 0.0.1
