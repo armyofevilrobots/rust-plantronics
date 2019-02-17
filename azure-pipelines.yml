@@ -1,19 +1,38 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+resources:
+- repo: self
+phases:
+- phase: Build_Mac
+  displayName: MacOS
 
-trigger:
-- master
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
+  queue:
+    name: Hosted macOS
+    demands: npm
 
-pool:
-  vmImage: 'Ubuntu-16.04'
+  steps:
+  - task: spontoreau.rust-vsts.rust-install.Rust@1
+    displayName: 'Rust Tool Installer'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+  - task: spontoreau.rust-vsts.rust-cargo.Cargo@1
+    displayName: Cargo
+    inputs:
+      cargoCommand: build
+      cargoCommandOptions: '--release'
+
+  - task: ArchiveFiles@2
+    displayName: 'Archive target/release/rust-plantronics'
+    inputs:
+      rootFolderOrFile: 'target/release/rust-plantronics'
+      archiveFile: 'plantronics-darwin-x86_64.zip'
+
+  - task: marcelo-formentao.github-tools.github-release-publish-task.GitHubReleasePublish@1
+    displayName: 'Release MacOS'
+    inputs:
+      githubEndpoint: rob
+      githubRepository: 'armyofevilrobots/rust-plantronics'
+      githubTag: '$(Build.BuildNumber)'
+      githubReleaseTitle: '$(Build.BuildNumber)'
+      githubReleaseDraft: false
+      githubReleaseAsset: 'plantronics-darwin-x86_64.zip'
+      githubReuseDraftOnly: false
