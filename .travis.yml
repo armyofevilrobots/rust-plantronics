@@ -1,0 +1,42 @@
+language: rust
+os:
+- linux
+- osx
+rust:
+  - stable
+cache: cargo
+addons:
+  apt:
+    packages:
+    - libsdl2-dev
+    - libasound2-dev
+script:
+- cargo test --verbose --all
+- cargo build --verbose --all --release
+- ls -al
+- cp target/release/rust-plantronics
+deploy:
+- provider: releases
+  name: linux
+  skip_cleanup: true
+  api_key:
+    secure: ZsAmEMhkrpOrtCKp8rlbMaHEn4y9Oo0tk8enmVfSEk7TCZRiIrog9D57Rq5C9ZY34JtlN96NZjyniTg2ASnqFC7EIocObDwUpuAuT5Wee1XAJuPZY5tBS201s59+A6pSKztBmGZI77tRwJWTqegz5eRwfX+83vtJdsoWtFo/KUhOxivvBUYcPkot3rFXVLc22+TGEzSVgY49Xiuuswrilo/ImbAgLaRfX05tGkUGmLBbXcg6QBKpLmusaO01OYhX9nwwU9YwQgiJ39Qvp8PRb+ed7KRT6yF3iNT9UaYAa8dskZe8RN875rYF0oT7d06bPrKBekSYfhCqWZQ2q6StyGV0MRlQSamgZox/4MyxAOR/40cNTUm0XVpUybs5mVmLnhhU9RIB3Lu9Kag38P4B41E/dmvhj4clniLiUpcZVTEogQerkBK/X0c915SAGNo0nSmU7p2fB6objih14yLDMD8KwWDP3xVMnj7EN/mRBxZkp7eE9NCen9aMQRbvffHC+2L+qew4C+nkLnrL3QImAuHBMLR/MGDCcuYhUlNXE3mg9qR703lpLcWDBtPVJqQu8lWNcOmZrPlFSCY5gKORktdenWzhD3xw2nAZrjAnl7GBGyHAyDBTJ663Gp/RDL0liKFXgAeggQ1prXbqTHplAVuRCDMHul1afU/RdysOync=
+  file_glob: true
+  file:
+  - rust-plantronics
+  on:
+    condition: $TRAVIS_OS_NAME = linux
+    repo: armyofevilrobots/rust-plantronics
+    tags: true
+- provider: releases
+  name: darwin
+  skip_cleanup: true
+  api_key:
+    secure: ZsAmEMhkrpOrtCKp8rlbMaHEn4y9Oo0tk8enmVfSEk7TCZRiIrog9D57Rq5C9ZY34JtlN96NZjyniTg2ASnqFC7EIocObDwUpuAuT5Wee1XAJuPZY5tBS201s59+A6pSKztBmGZI77tRwJWTqegz5eRwfX+83vtJdsoWtFo/KUhOxivvBUYcPkot3rFXVLc22+TGEzSVgY49Xiuuswrilo/ImbAgLaRfX05tGkUGmLBbXcg6QBKpLmusaO01OYhX9nwwU9YwQgiJ39Qvp8PRb+ed7KRT6yF3iNT9UaYAa8dskZe8RN875rYF0oT7d06bPrKBekSYfhCqWZQ2q6StyGV0MRlQSamgZox/4MyxAOR/40cNTUm0XVpUybs5mVmLnhhU9RIB3Lu9Kag38P4B41E/dmvhj4clniLiUpcZVTEogQerkBK/X0c915SAGNo0nSmU7p2fB6objih14yLDMD8KwWDP3xVMnj7EN/mRBxZkp7eE9NCen9aMQRbvffHC+2L+qew4C+nkLnrL3QImAuHBMLR/MGDCcuYhUlNXE3mg9qR703lpLcWDBtPVJqQu8lWNcOmZrPlFSCY5gKORktdenWzhD3xw2nAZrjAnl7GBGyHAyDBTJ663Gp/RDL0liKFXgAeggQ1prXbqTHplAVuRCDMHul1afU/RdysOync=
+  file_glob: true
+  file:
+  - rust-plantronics
+  on:
+    condition: $TRAVIS_OS_NAME = osx
+    repo: armyofevilrobots/rust-plantronics
+    tags: true
