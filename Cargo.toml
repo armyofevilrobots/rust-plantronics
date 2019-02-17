@@ -5,13 +5,15 @@ authors = ["Derek Anderson <Derek.Anderson@virtustream.com>"]
 edition = "2018"
 
 [dependencies]
+clap = "2.29"
+lazy_static = ">=1.2.0"
+log = "0.4"
 mqtt-protocol = "0.4.2"
 native-tls = "0.1"
-clap = "2.29"
-toml = "0.4.5"
+pretty_env_logger = "0.3.0"
 reqwest = "0.9.5"
 serde = ">=1.0"
 serde_json = ">=1.0"
 serde_derive = ">=1.0"
 serde_urlencoded = ">=0.5"
-lazy_static = ">=1.2.0"
+toml = "0.4.5"

@@ -2,12 +2,16 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
+extern crate pretty_env_logger;
 extern crate reqwest;
+#[macro_use]
+extern crate log;
 
 // use reqwest;
 use serde_json::Value;
+use std::env;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 mod config;
 mod encoding;
@@ -22,10 +26,10 @@ fn get_session_id(name: &String) -> Result<String> {
             .unwrap_or(config::DEFAULT_URL),
         name = name,
     );
-    println!("{}", request_url);
+    debug!("{}", request_url);
     let mut response = reqwest::get(&request_url)?;
     let out: encoding::AppRegistration = response.json()?;
-    println!("{:?}", out);
+    debug!("{:?}", out);
     let request_url = format!(
         "{baseurl}Spokes/DeviceServices/Attach?uid={app_uid}",
         baseurl = config::CONFIG
@@ -35,7 +39,7 @@ fn get_session_id(name: &String) -> Result<String> {
     );
     let mut response = reqwest::get(&request_url)?;
     let out: encoding::PlantronicsResponse = response.json()?;
-    // println!("{:?}", out);
+    // info!("{:?}", out);
     if !out.is_error && out.type_name == "SessionHash" {
         let session_id = match out.result {
             Value::String(outstr) => outstr,
@@ -53,7 +57,7 @@ fn get_session_id(name: &String) -> Result<String> {
 
 fn get_dse_from_json(item: &Value) -> Result<encoding::DataServiceEvent> {
     let json_str = serde_json::to_string(item)?;
-    // println!("{:?}", &json_str);
+    // info!("{:?}", &json_str);
     let ev: encoding::DataServiceEvent = serde_json::from_str(&json_str)?;
     return Ok(ev);
 }
@@ -70,12 +74,12 @@ fn get_events(session_id: &String) -> Result<Vec<encoding::DataServiceEvent>> {
     let mut eventresult: Vec<encoding::DataServiceEvent> = Vec::new();
     let mut response = reqwest::get(&request_url)?;
     let out: encoding::PlantronicsResponse = response.json()?;
-    // println!("{:?}", out);
+    // info!("{:?}", out);
     if !out.is_error && out.type_name == "DeviceEventArray" {
         match out.result {
             Value::Array(outvec) => {
                 for item_result in outvec.into_iter() {
-                    // println!("item_result is {:?}", item_result);
+                    // info!("item_result is {:?}", item_result);
                     eventresult.push(get_dse_from_json(&item_result).unwrap());
                 }
             }
@@ -88,53 +92,101 @@ fn get_events(session_id: &String) -> Result<Vec<encoding::DataServiceEvent>> {
 }
 
 fn main() {
-    let _ = config::CONFIG; // Force immediate resolution, in case we need to print help...
-    let token = match get_session_id(&"rust-plantronics".to_string()) {
-        Ok(token) => token,
-        Err(e) => {
-            println!("Unable to retrieve token due to err: {}", e);
-            return;
+    // Set the default env var the easy way...
+    match env::var_os("RUST_LOG") {
+        Some(_) => {}
+        None => {
+            env::set_var("RUST_LOG", "info");
         }
-    };
-    // println!("{:?}", token);
-    // Poll loop, forever...
-    let delay_time = Duration::from_secs(1);
-    let mut worn = true;
+    }
+
+    // Initialize logging
+    pretty_env_logger::init();
     loop {
-        if let Ok(events) = get_events(&token) {
-            for event in events.into_iter() {
-                // println!("ev: {:?}", &event);
-                if event.event_name == "MuteOff" && worn {
-                    println!("Turning on the sign");
-                    reqwest::get(&format!(
-                        "{tasmota}cm?cmnd=Power%20On",
-                        tasmota = config::CONFIG
-                            .value_of("tasmota")
-                            .unwrap_or(config::DEFAULT_TAS)
-                    ));
-                } else if event.event_name == "MuteOn" && worn {
-                    println!("Turning off the sign");
-                    reqwest::get(&format!(
-                        "{tasmota}cm?cmnd=Power%20Off",
-                        tasmota = config::CONFIG
-                            .value_of("tasmota")
-                            .unwrap_or(config::DEFAULT_TAS)
-                    ));
-                } else if event.event_name == "Doff" {
-                    println!("Headset removed");
-                    worn = false;
-                    reqwest::get(&format!(
-                        "{tasmota}cm?cmnd=Power%20Off",
-                        tasmota = config::CONFIG
-                            .value_of("tasmota")
-                            .unwrap_or(config::DEFAULT_TAS)
-                    ));
-                } else if event.event_name == "Don" {
-                    println!("Headset applied to head");
-                    worn = true;
+        let _ = config::CONFIG; // Force immediate resolution, in case we need to print help...
+        let token = match get_session_id(&"rust-plantronics".to_string()) {
+            Ok(token) => token,
+            Err(e) => {
+                error!("Unable to retrieve token due to err: {}", e);
+                return;
+            }
+        };
+        debug!("Token is {:?}", token);
+        info!("TOKEN: {:?}", &token);
+        // Poll loop, forever...
+        let delay_time = Duration::from_secs(1);
+        let mut worn = true;
+        loop {
+            if let Ok(events) = get_events(&token) {
+                for event in events.into_iter() {
+                    // info!("ev: {:?}", &event);
+                    if event.event_name == "MuteOff" && worn {
+                        info!("Turning on the sign");
+                        let result = reqwest::get(&format!(
+                            "{tasmota}cm?cmnd=Power%20On",
+                            tasmota = config::CONFIG
+                                .value_of("tasmota")
+                                .unwrap_or(config::DEFAULT_TAS)
+                        ));
+                        match result {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!("Got an error retrieving result for events: {}", e);
+                                break;
+                            }
+                        }
+                    } else if event.event_name == "MuteOn" && worn {
+                        info!("Turning off the sign");
+                        let result = reqwest::get(&format!(
+                            "{tasmota}cm?cmnd=Power%20Off",
+                            tasmota = config::CONFIG
+                                .value_of("tasmota")
+                                .unwrap_or(config::DEFAULT_TAS)
+                        ));
+                        match result {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!("Got an error turning off the Tasmota! {}", e);
+                                break;
+                            }
+                        }
+                    } else if event.event_name == "Doff" {
+                        info!("Headset removed");
+                        worn = false;
+                        let result = reqwest::get(&format!(
+                            "{tasmota}cm?cmnd=Power%20Off",
+                            tasmota = config::CONFIG
+                                .value_of("tasmota")
+                                .unwrap_or(config::DEFAULT_TAS)
+                        ));
+                        match result {
+                            Ok(_) => {}
+                            Err(e) => error!("Got an error turning off the Tasmota! {}", e),
+                        }
+                    } else if event.event_name == "Don" {
+                        info!("Headset applied to head");
+                        worn = true;
+                    }
+                }
+            }
+            let now = SystemTime::now();
+            sleep(delay_time);
+            match now.elapsed() {
+                Ok(elapsed) => {
+                    if elapsed.as_secs() > 30 {
+                        error!(
+                            "Unexpectedly long delay of {} seconds. Restarting.",
+                            elapsed.as_secs()
+                        );
+                        break;
+                    }
+                }
+                Err(e) => {
+                    info!("Error occured {:?}", e);
+                    break;
                 }
             }
         }
-        sleep(delay_time);
+        warn!("We exited the polling loop. Restarting...")
     }
 }
