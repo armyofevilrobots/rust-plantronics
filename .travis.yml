@@ -17,7 +17,7 @@ script:
 - cp target/release/rust-plantronics rust-plantronics-${TRAVIS_OS_NAME}
 deploy:
 - provider: releases
-  name: linux
+  name: rust-plantronics-${TRAVIS_BRANCH}
   skip_cleanup: true
   api_key:
     secure: LphNCCEz3DgBGq5NgdtYbc1c9/wHb4T/+kitGm7cG0nLCQPmBsKgvzOSNGPwfufubPlw/45FTIvb0+AedaSs6HVAILFh/XDPUiQPw65QIDpUdZGmG3B1enQx0tPZZVHSzh6N401vSnwoNqvOjHNss6UCwauDIoGmSgc1HqA/7Oo3LCcfcREbQr5jlly9fttv//9a4lS5JxsEua1TByHP4PAsol6iz0CZs55xSULogFU+4l4SX1lgRyBb0hfTNIiaaMUHgZpu4IINnHL7I8acDHeJXF/xt+laz5rSbtMjsBUfsyX3z9xwMxIVt5ZQ70IsBG4B5vnnqkDQG7P+gj+p0dv0JK53Y9LY3r3fwCTL7TphGEhSin3DgstovP+PJeYsChswRxuwG1Y8wxGzzBooD15tSv0BLDVkEv1U0P4gw7BD7FYGwdQm7ErihC23FrJW2U8SOFUTAPqMjkxQmpJaAvUG4Wy3nWq+BAcm6zkj9eEoyR2NTGFgqnk5aIhOCrSLzqWNjB4hKosIdnlfP2U2KnW96sgiCvkJg1wL04kKSSCpLLvu6FIPLbb47TpplnveuuV0xJ8eXwteWxJgFKQyYICwvagOFxrqA2bucvjPm/QXhgY38/jX6jl8tlbLG+BMMJh7d72Y1DJlJ55RijxH1NBJsIbIC0heApTNVQ2i8YY=
@@ -29,7 +29,7 @@ deploy:
     repo: armyofevilrobots/rust-plantronics
     tags: true
 - provider: releases
-  name: darwin
+  name: rust-plantronics-${TRAVIS_BRANCH}
   skip_cleanup: true
   api_key:
     secure: LphNCCEz3DgBGq5NgdtYbc1c9/wHb4T/+kitGm7cG0nLCQPmBsKgvzOSNGPwfufubPlw/45FTIvb0+AedaSs6HVAILFh/XDPUiQPw65QIDpUdZGmG3B1enQx0tPZZVHSzh6N401vSnwoNqvOjHNss6UCwauDIoGmSgc1HqA/7Oo3LCcfcREbQr5jlly9fttv//9a4lS5JxsEua1TByHP4PAsol6iz0CZs55xSULogFU+4l4SX1lgRyBb0hfTNIiaaMUHgZpu4IINnHL7I8acDHeJXF/xt+laz5rSbtMjsBUfsyX3z9xwMxIVt5ZQ70IsBG4B5vnnqkDQG7P+gj+p0dv0JK53Y9LY3r3fwCTL7TphGEhSin3DgstovP+PJeYsChswRxuwG1Y8wxGzzBooD15tSv0BLDVkEv1U0P4gw7BD7FYGwdQm7ErihC23FrJW2U8SOFUTAPqMjkxQmpJaAvUG4Wy3nWq+BAcm6zkj9eEoyR2NTGFgqnk5aIhOCrSLzqWNjB4hKosIdnlfP2U2KnW96sgiCvkJg1wL04kKSSCpLLvu6FIPLbb47TpplnveuuV0xJ8eXwteWxJgFKQyYICwvagOFxrqA2bucvjPm/QXhgY38/jX6jl8tlbLG+BMMJh7d72Y1DJlJ55RijxH1NBJsIbIC0heApTNVQ2i8YY=
