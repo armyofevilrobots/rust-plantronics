@@ -6,12 +6,19 @@ extern crate pretty_env_logger;
 extern crate reqwest;
 #[macro_use]
 extern crate log;
+extern crate dns_lookup;
+//extern crate mdns;
+extern crate rand;
+extern crate url;
 
 // use reqwest;
+use rand::{thread_rng, Rng};
 use serde_json::Value;
 use std::env;
+use std::net::IpAddr;
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
+use url::{Host, ParseError, Url};
 
 mod config;
 mod encoding;
@@ -91,6 +98,44 @@ fn get_events(session_id: &String) -> Result<Vec<encoding::DataServiceEvent>> {
     }
 }
 
+fn bonjour_lookup_host(hostname: &str) -> Result<String> {
+    let mut ips: Vec<std::net::IpAddr> = dns_lookup::lookup_host(hostname)?;
+    // Oh crap, this order may be stable, but we want to randomly try them
+    // in case one IP is broken/unroutable, or whatevs.
+    // let _ips: &[std::net::IpAddr] = ips.as_mut_slice();
+    thread_rng().shuffle(&mut ips);
+    for ip in ips {
+        debug!("An IP: {:?}", ip);
+        return Ok(ip.to_string());
+    }
+    Ok(hostname.into())
+}
+
+fn rewrite_url_with_mdns(url: &str) -> Result<String> {
+    let mut url_obj = Url::parse(url)?;
+    match url_obj.host() {
+        Some(Host::Domain(host_name)) => {
+            debug!("Rewriting URL host {}", &host_name);
+            let host = bonjour_lookup_host(&host_name)?;
+            url_obj.set_host(Some(&host));
+            info!("Rewrote URL to {}", url_obj.as_str());
+            return Ok(url_obj.to_string());
+        }
+        Some(Host::Ipv4(addr)) => {
+            debug!("Received an IPV4 host {}, no rewrite.", &addr);
+        }
+        Some(Host::Ipv6(addr)) => {
+            debug!("Received an IPV6 host {}, fancy!", &addr);
+        }
+        None => {}
+    }
+    warn!(
+        "Could not lookup host for {}, so using raw, may be flaky!",
+        url
+    );
+    Ok(url.into())
+}
+
 fn main() {
     // Set the default env var the easy way...
     match env::var_os("RUST_LOG") {
@@ -100,6 +145,8 @@ fn main() {
         }
     }
 
+    // Let's use mDNS to lookup the host eh?
+
     // Initialize logging
     pretty_env_logger::init();
     loop {
@@ -108,7 +155,7 @@ fn main() {
             Ok(token) => token,
             Err(e) => {
                 error!("Unable to retrieve token due to err: {}", e);
-                return;
+                break;
             }
         };
         debug!("Token is {:?}", token);
@@ -116,6 +163,18 @@ fn main() {
         // Poll loop, forever...
         let delay_time = Duration::from_secs(1);
         let mut worn = true;
+
+        let tasmota = match rewrite_url_with_mdns(
+            config::CONFIG
+                .value_of("tasmota")
+                .unwrap_or(config::DEFAULT_TAS),
+        ) {
+            Ok(tasmota) => tasmota,
+            Err(e) => {
+                error!("Unable to lookup host :( {}", e);
+                break;
+            }
+        };
         loop {
             if let Ok(events) = get_events(&token) {
                 for event in events.into_iter() {
@@ -124,9 +183,7 @@ fn main() {
                         info!("Turning on the sign");
                         let result = reqwest::get(&format!(
                             "{tasmota}cm?cmnd=Power%20On",
-                            tasmota = config::CONFIG
-                                .value_of("tasmota")
-                                .unwrap_or(config::DEFAULT_TAS)
+                            tasmota = tasmota
                         ));
                         match result {
                             Ok(_) => {}
@@ -139,9 +196,7 @@ fn main() {
                         info!("Turning off the sign");
                         let result = reqwest::get(&format!(
                             "{tasmota}cm?cmnd=Power%20Off",
-                            tasmota = config::CONFIG
-                                .value_of("tasmota")
-                                .unwrap_or(config::DEFAULT_TAS)
+                            tasmota = tasmota
                         ));
                         match result {
                             Ok(_) => {}
@@ -155,9 +210,7 @@ fn main() {
                         worn = false;
                         let result = reqwest::get(&format!(
                             "{tasmota}cm?cmnd=Power%20Off",
-                            tasmota = config::CONFIG
-                                .value_of("tasmota")
-                                .unwrap_or(config::DEFAULT_TAS)
+                            tasmota = tasmota
                         ));
                         match result {
                             Ok(_) => {}
