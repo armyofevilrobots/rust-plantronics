@@ -12,13 +12,13 @@ extern crate rand;
 extern crate url;
 
 // use reqwest;
-use rand::{thread_rng, Rng};
+//use rand::seq::SliceRandom;
+use rand::{seq::SliceRandom, thread_rng};
 use serde_json::Value;
 use std::env;
-use std::net::IpAddr;
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
-use url::{Host, ParseError, Url};
+use url::{Host, Url};
 
 mod config;
 mod encoding;
@@ -103,7 +103,8 @@ fn bonjour_lookup_host(hostname: &str) -> Result<String> {
     // Oh crap, this order may be stable, but we want to randomly try them
     // in case one IP is broken/unroutable, or whatevs.
     // let _ips: &[std::net::IpAddr] = ips.as_mut_slice();
-    thread_rng().shuffle(&mut ips);
+    let mut rng = thread_rng();
+    ips.shuffle(&mut rng);
     for ip in ips {
         debug!("An IP: {:?}", ip);
         return Ok(ip.to_string());
@@ -117,7 +118,7 @@ fn rewrite_url_with_mdns(url: &str) -> Result<String> {
         Some(Host::Domain(host_name)) => {
             debug!("Rewriting URL host {}", &host_name);
             let host = bonjour_lookup_host(&host_name)?;
-            url_obj.set_host(Some(&host));
+            url_obj.set_host(Some(&host))?;
             info!("Rewrote URL to {}", url_obj.as_str());
             return Ok(url_obj.to_string());
         }
@@ -149,13 +150,16 @@ fn main() {
 
     // Initialize logging
     pretty_env_logger::init();
+
     loop {
         let _ = config::CONFIG; // Force immediate resolution, in case we need to print help...
         let token = match get_session_id(&"rust-plantronics".to_string()) {
             Ok(token) => token,
             Err(e) => {
                 error!("Unable to retrieve token due to err: {}", e);
-                break;
+                info!("Sleeping for a few seconds to not SPAM the Plantronics hub.");
+                sleep(Duration::from_secs(10));
+                continue;
             }
         };
         debug!("Token is {:?}", token);
