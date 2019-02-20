@@ -176,7 +176,8 @@ fn main() {
             Ok(tasmota) => tasmota,
             Err(e) => {
                 error!("Unable to lookup host :( {}", e);
-                break;
+                sleep(Duration::from_secs(10));
+                continue;
             }
         };
         loop {
